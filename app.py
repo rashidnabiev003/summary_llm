@@ -2,8 +2,8 @@ import json
 from fastapi import FastAPI, HTTPException, Query
 from typing import Literal
 
-from schemas import MeetingRequest
-from ollama_client import OllamaClient
+from src.utils.schemas import MeetingRequest
+from ollama_client.ollama_client import OllamaClient
 
 # Load server configuration
 with open("config.json", 'r') as f:

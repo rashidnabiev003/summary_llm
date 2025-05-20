@@ -1,0 +1,5 @@
+{
+  "summary": "Summarize the following meeting transcript in 3-5 paragraphs. Focus on key points, decisions made, and action items. Be concise but comprehensive.\n\nTranscript:\n{transcript}",
+  
+  "qa": "Based on the following meeting transcript, answer these questions:\n1. What are the main topics discussed?\n2. What decisions were made?\n3. What are the next steps or action items?\n4. Who has responsibility for different tasks?\n5. What deadlines or timeframes were mentioned?\n\nTranscript:\n{transcript}"
+} 
