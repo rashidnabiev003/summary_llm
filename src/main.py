@@ -21,7 +21,7 @@ config = Config()
 # Initialize FastAPI app
 app = FastAPI(
     title="Meeting Summarizer API",
-    description="API for summarizing meeting transcripts using Ollama and Qwen model",
+    description="API for summarizing meeting transcripts using Ollama and Qwen3 model",
     version="1.0.0",
 )
 

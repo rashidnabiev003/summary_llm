@@ -8,6 +8,11 @@ from ..config import Config
 
 logger = logging.getLogger(__name__)
 
+system_prompt_qa = """ qa prompt"""
+
+system_prompt_summary = """ summary prompt"""
+
+
 class OllamaClient:
     def __init__(self, config: Config = None):
         """
@@ -33,10 +38,9 @@ class OllamaClient:
             HTTPException: If there's an error during generation
         """
         cmd = [
-            "ollama", "run", "qwen",
+            "ollama", "run", "qwen3:14b",
             "--prompt", prompt,
-            "--max-tokens", "500",
-            "--temperature", "0.2",
+            "--system",
             "--json"
         ]
         

@@ -41,7 +41,7 @@ class Config:
     @property
     def port(self) -> int:
         """Get server port"""
-        return int(self.server_config.get("port", 8000))
+        return int(self.server_config.get("port", 49137))
     
     @property
     def reload(self) -> bool:
