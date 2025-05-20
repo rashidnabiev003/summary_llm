@@ -1,10 +1,11 @@
 import logging
+import json
 from typing import Dict, Any, List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas import MeetingRequest
-from .services.summarizer import SummarizerService
+from src.schemas import MeetingRequest, MeetingEntry, MeetingEntryList
+from src.services.summarizer import SummarizerService
 
 # Configure logging
 logging.basicConfig(
@@ -32,13 +33,21 @@ app.add_middleware(
 # Initialize services
 summarizer = SummarizerService()
 
+async def process_entries(entries: List[MeetingEntry]) -> str:
+    """Объединить записи в один транскрипт"""
+    combined_text = "\n\n".join([
+        f"[{entry.time.begin} - {entry.time.end}] {entry.name}: {entry.text}"
+        for entry in entries
+    ])
+    return combined_text
+
 @app.get("/health")
 async def health_check() -> Dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy"}
 
 @app.post("/summarize")
-async def summarize_meeting(request: MeetingRequest) -> Dict[str, str]:
+async def summarize_meeting(request: MeetingRequest) -> Dict[str, Any]:
     """
     Summarize meeting transcript
     
@@ -46,20 +55,17 @@ async def summarize_meeting(request: MeetingRequest) -> Dict[str, str]:
         request: Meeting request with entries
     
     Returns:
-        Dict with result field containing the summary
+        Dict with think and result fields
     """
     try:
-        # Combine all meeting entries into a single transcript
-        combined_text = "\n\n".join([
-            f"[{entry.time.begin} - {entry.time.end}] {entry.name}: {entry.text}"
-            for entry in request.entries
-        ])
+        # Используем entries из запроса
+        combined_text = await process_entries(request.entries)
         
         # Generate summary
-        result_text = await summarizer.generate_summary(combined_text)
+        response = await summarizer.generate_summary(combined_text)
         
         logger.info(f"Successfully summarized meeting with {len(request.entries)} entries")
-        return {"result": result_text}
+        return response
         
     except Exception as e:
         logger.error(f"Error summarizing meeting: {str(e)}")
@@ -70,8 +76,77 @@ async def summarize_meeting(request: MeetingRequest) -> Dict[str, str]:
             detail=f"Error summarizing meeting: {str(e)}"
         )
 
+@app.post("/summarize/list")
+async def summarize_meeting_list(entries: MeetingEntryList) -> Dict[str, Any]:
+    """
+    Summarize meeting transcript from direct list of entries
+    
+    Args:
+        entries: List of meeting entries
+    
+    Returns:
+        Dict with think and result fields
+    """
+    try:
+        # Объединяем записи напрямую
+        combined_text = await process_entries(entries)
+        
+        # Generate summary
+        response = await summarizer.generate_summary(combined_text)
+        
+        logger.info(f"Successfully summarized meeting with {len(entries)} entries")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error summarizing meeting: {str(e)}")
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error summarizing meeting: {str(e)}"
+        )
+
+@app.post("/summarize/file")
+async def summarize_meeting_file(file: UploadFile = File(...)) -> Dict[str, Any]:
+    """
+    Summarize meeting transcript from uploaded JSON file
+    
+    Args:
+        file: JSON file with meeting entries list
+    
+    Returns:
+        Dict with think and result fields
+    """
+    try:
+        # Читаем файл
+        contents = await file.read()
+        entries_data = json.loads(contents)
+        
+        # Валидируем и преобразуем данные в модель
+        entries = [MeetingEntry(**entry) for entry in entries_data]
+        
+        # Объединяем записи
+        combined_text = await process_entries(entries)
+        
+        # Generate summary
+        response = await summarizer.generate_summary(combined_text)
+        
+        logger.info(f"Successfully summarized meeting from file with {len(entries)} entries")
+        return response
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+    except Exception as e:
+        logger.error(f"Error summarizing meeting from file: {str(e)}")
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error summarizing meeting from file: {str(e)}"
+        )
+
 @app.post("/qa")
-async def meeting_qa(request: MeetingRequest) -> Dict[str, str]:
+async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
     """
     Generate QA for meeting transcript
     
@@ -79,20 +154,17 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, str]:
         request: Meeting request with entries
     
     Returns:
-        Dict with result field containing the QA
+        Dict with think and result fields
     """
     try:
-        # Combine all meeting entries into a single transcript
-        combined_text = "\n\n".join([
-            f"[{entry.time.begin} - {entry.time.end}] {entry.name}: {entry.text}"
-            for entry in request.entries
-        ])
+        # Используем entries из запроса
+        combined_text = await process_entries(request.entries)
         
         # Generate QA
-        result_text = await summarizer.generate_qa(combined_text)
+        response = await summarizer.generate_qa(combined_text)
         
         logger.info(f"Successfully generated QA for meeting with {len(request.entries)} entries")
-        return {"result": result_text}
+        return response
         
     except Exception as e:
         logger.error(f"Error generating QA for meeting: {str(e)}")
@@ -103,11 +175,71 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, str]:
             detail=f"Error generating QA for meeting: {str(e)}"
         )
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "src.main:app",
-        host="0.0.0.0",
-        port=49137,
-        log_level="info",
-    ) 
+@app.post("/qa/list")
+async def meeting_qa_list(entries: MeetingEntryList) -> Dict[str, Any]:
+    """
+    Generate QA for meeting transcript from direct list of entries
+    
+    Args:
+        entries: List of meeting entries
+    
+    Returns:
+        Dict with think and result fields
+    """
+    try:
+        # Объединяем записи напрямую
+        combined_text = await process_entries(entries)
+        
+        # Generate QA
+        response = await summarizer.generate_qa(combined_text)
+        
+        logger.info(f"Successfully generated QA for meeting with {len(entries)} entries")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error generating QA for meeting: {str(e)}")
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating QA for meeting: {str(e)}"
+        )
+
+@app.post("/qa/file")
+async def meeting_qa_file(file: UploadFile = File(...)) -> Dict[str, Any]:
+    """
+    Generate QA for meeting transcript from uploaded JSON file
+    
+    Args:
+        file: JSON file with meeting entries list
+    
+    Returns:
+        Dict with think and result fields
+    """
+    try:
+        # Читаем файл
+        contents = await file.read()
+        entries_data = json.loads(contents)
+        
+        # Валидируем и преобразуем данные в модель
+        entries = [MeetingEntry(**entry) for entry in entries_data]
+        
+        # Объединяем записи
+        combined_text = await process_entries(entries)
+        
+        # Generate QA
+        response = await summarizer.generate_qa(combined_text)
+        
+        logger.info(f"Successfully generated QA from file with {len(entries)} entries")
+        return response
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+    except Exception as e:
+        logger.error(f"Error generating QA from file: {str(e)}")
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating QA from file: {str(e)}"
+        ) 

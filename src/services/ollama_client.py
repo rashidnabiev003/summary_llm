@@ -22,8 +22,15 @@ class OllamaClient:
     SUMMARY_USER_PROMPT = """Summarize the following meeting transcript in 3-5 paragraphs. \
 Focus on key points, decisions made, and action items. Be concise but comprehensive.
 
+Your response MUST follow this format:
+<think>
+Here you analyze the content, identify key points and important details.
+</think>
+And then the actual summary.
+
 Transcript:
 {transcript}"""
+
     QA_USER_PROMPT = """Based on the following meeting transcript, answer these questions:
 1. What are the main topics discussed?
 2. What decisions were made?
@@ -31,15 +38,22 @@ Transcript:
 4. Who has responsibility for different tasks?
 5. What deadlines or timeframes were mentioned?
 
+Your response MUST follow this format:
+<think>
+Here you analyze the content, identify relevant information to answer each question.
+</think>
+And then the actual answers to each question.
+
 Transcript:
 {transcript}"""
+
     def __init__(self):
         """
         Initialize Ollama client.
         """
         self.model = MODEL
   
-    def generate_summary(self, transcript: str) -> str:
+    def generate_summary(self, transcript: str) -> Dict[str, str]:
         """
         Generate summary using Ollama CLI
         
@@ -47,14 +61,14 @@ Transcript:
             transcript: The meeting transcript to summarize
             
         Returns:
-            str: Generated summary
+            Dict containing "think" and "result" parts
             
         Raises:
             HTTPException: If there's an error during generation
         """
         return self._generate(transcript, is_summary=True)
         
-    def generate_qa(self, transcript: str) -> str:
+    def generate_qa(self, transcript: str) -> Dict[str, str]:
         """
         Generate QA using Ollama CLI
         
@@ -62,14 +76,14 @@ Transcript:
             transcript: The meeting transcript to analyze
             
         Returns:
-            str: Generated QA
+            Dict containing "think" and "result" parts
             
         Raises:
             HTTPException: If there's an error during generation
         """
         return self._generate(transcript, is_summary=False)
         
-    def _generate(self, transcript: str, is_summary: bool) -> str:
+    def _generate(self, transcript: str, is_summary: bool) -> Dict[str, str]:
         system_prompt = self.SUMMARY_SYSTEM_PROMPT if is_summary else self.QA_SYSTEM_PROMPT
         user_prompt = (
             self.SUMMARY_USER_PROMPT if is_summary else self.QA_USER_PROMPT
@@ -88,8 +102,19 @@ Transcript:
                 raise HTTPException(status_code=500, detail="Invalid response structure from Ollama")
 
             content = response["message"]["content"].strip()
-            logger.debug("Received content from Ollama")
-            return content
+            
+            # Разделяем ответ на <think> и result
+            think_part = ""
+            result_part = content
+            
+            if "<think>" in content and "</think>" in content:
+                think_part = content.split("<think>")[1].split("</think>")[0].strip()
+                result_part = content.split("</think>")[1].strip()
+            
+            return {
+                "think": think_part,
+                "result": result_part
+            }
 
         except Exception as e:
             logger.error(f"Error during Ollama generation: {e}", exc_info=True)

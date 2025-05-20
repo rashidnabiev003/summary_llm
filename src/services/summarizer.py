@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from fastapi import HTTPException
 
-from .ollama_client import OllamaClient
+from src.services.ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class SummarizerService:
         """
         self.ollama = OllamaClient()
         
-    async def generate_summary(self, transcript: str) -> str:
+    async def generate_summary(self, transcript: str) -> Dict[str, str]:
         """
         Summarize meeting transcript.
         
@@ -21,7 +21,7 @@ class SummarizerService:
             transcript: The meeting transcript to summarize
             
         Returns:
-            str: Generated summary text
+            Dict containing 'think' and 'result' parts
             
         Raises:
             HTTPException: If there's an error during summarization
@@ -42,7 +42,7 @@ class SummarizerService:
                 detail=f"Error during summarization: {str(e)}"
             )
             
-    async def generate_qa(self, transcript: str) -> str:
+    async def generate_qa(self, transcript: str) -> Dict[str, str]:
         """
         Generate QA for meeting transcript.
         
@@ -50,7 +50,7 @@ class SummarizerService:
             transcript: The meeting transcript to analyze
             
         Returns:
-            str: Generated QA text
+            Dict containing 'think' and 'result' parts
             
         Raises:
             HTTPException: If there's an error during QA generation
