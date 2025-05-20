@@ -46,35 +46,6 @@ async def health_check() -> Dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy"}
 
-@app.post("/summarize")
-async def summarize_meeting(request: MeetingRequest) -> Dict[str, Any]:
-    """
-    Summarize meeting transcript
-    
-    Args:
-        request: Meeting request with entries
-    
-    Returns:
-        Dict with think and result fields
-    """
-    try:
-        # Используем entries из запроса
-        combined_text = await process_entries(request.entries)
-        
-        # Generate summary
-        response = await summarizer.generate_summary(combined_text)
-        
-        logger.info(f"Successfully summarized meeting with {len(request.entries)} entries")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error summarizing meeting: {str(e)}")
-        if isinstance(e, HTTPException):
-            raise
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error summarizing meeting: {str(e)}"
-        )
 
 @app.post("/summarize/list")
 async def summarize_meeting_list(entries: MeetingEntryList) -> Dict[str, Any]:
@@ -143,36 +114,6 @@ async def summarize_meeting_file(file: UploadFile = File(...)) -> Dict[str, Any]
         raise HTTPException(
             status_code=500,
             detail=f"Error summarizing meeting from file: {str(e)}"
-        )
-
-@app.post("/qa")
-async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
-    """
-    Generate QA for meeting transcript
-    
-    Args:
-        request: Meeting request with entries
-    
-    Returns:
-        Dict with think and result fields
-    """
-    try:
-        # Используем entries из запроса
-        combined_text = await process_entries(request.entries)
-        
-        # Generate QA
-        response = await summarizer.generate_qa(combined_text)
-        
-        logger.info(f"Successfully generated QA for meeting with {len(request.entries)} entries")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error generating QA for meeting: {str(e)}")
-        if isinstance(e, HTTPException):
-            raise
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error generating QA for meeting: {str(e)}"
         )
 
 @app.post("/qa/list")

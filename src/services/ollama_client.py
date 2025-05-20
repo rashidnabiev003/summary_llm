@@ -19,32 +19,32 @@ class OllamaClient:
         "responsibilities, and deadlines."
     )
 
-    SUMMARY_USER_PROMPT = """Summarize the following meeting transcript in 3-5 paragraphs. \
-Focus on key points, decisions made, and action items. Be concise but comprehensive.
+    SUMMARY_USER_PROMPT = """Изложите следующую запись совещания. 
+Сосредоточьтесь на ключевых моментах, принятых решениях и действиях. Будьте краткими, но всесторонними.
 
-Your response MUST follow this format:
+Ваш ответ ДОЛЖЕН соответствовать следующему формату:
 <think>
-Here you analyze the content, identify key points and important details.
+Здесь вы анализируете содержание, определяете ключевые моменты и важные детали.
 </think>
-And then the actual summary.
+А затем собственно резюме.
 
-Transcript:
+Расшифровка:
 {transcript}"""
 
-    QA_USER_PROMPT = """Based on the following meeting transcript, answer these questions:
-1. What are the main topics discussed?
-2. What decisions were made?
-3. What are the next steps or action items?
-4. Who has responsibility for different tasks?
-5. What deadlines or timeframes were mentioned?
+    QA_USER_PROMPT = """Основываясь на следующей стенограмме совещания, ответьте на следующие вопросы: 
+1. Какие основные темы обсуждались? 
+2. Какие решения были приняты? 
+3. Каковы следующие шаги или действия? 
+4. Кто отвечает за выполнение различных задач? 
+5. Какие сроки или временные рамки были упомянуты? 
 
-Your response MUST follow this format:
+Ваш ответ должен соответствовать следующему формату: 
 <think>
-Here you analyze the content, identify relevant information to answer each question.
+Здесь вы анализируете содержание, определяете необходимую информацию для ответа на каждый вопрос.
 </think>
-And then the actual answers to each question.
+А теперь настоящие ответы на каждый вопрос.
 
-Transcript:
+Расшифровка:
 {transcript}"""
 
     def __init__(self):

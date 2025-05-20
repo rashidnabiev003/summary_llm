@@ -15,9 +15,9 @@ A microservice for summarizing meeting transcripts using Ollama and the Qwen mod
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.12
 - [Ollama](https://ollama.ai/) installed
-- Qwen model pulled in Ollama (`ollama pull qwen`)
+- Qwen model pulled in Ollama (`ollama pull qwen3:14b`)
 
 ## Project Structure
 
@@ -29,8 +29,10 @@ A microservice for summarizing meeting transcripts using Ollama and the Qwen mod
 │   │   └── summarizer.py   # Summarizer service
 │   ├── main.py             # FastAPI application
 │   ├── schemas.py          # Pydantic models
-│   └── run.py              # Script for launching the application
+└── run.py                  # Script for launching the application
 └── requirements.txt        # Dependencies
+└── setup.py                # Script for correctly import libraries
+└── .gitingnore
 ```
 
 ## Installation
@@ -45,26 +47,15 @@ pip install -r requirements.txt
 3. Make sure Ollama is installed and running:
 
 ```bash
-ollama pull qwen
+ollama pull qwen3:14b
 ```
 
-## Running the Service
-
-Start the server:
-
-```bash
-python -m src.run
-```
-
-The API will be available at http://localhost:8000
 
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
-- `POST /summarize` - Summarize meeting transcript (with "entries" wrapped format)
 - `POST /summarize/list` - Summarize meeting transcript (direct list format)
 - `POST /summarize/file` - Summarize meeting transcript from uploaded JSON file
-- `POST /qa` - Generate Q&A from meeting transcript (with "entries" wrapped format)
 - `POST /qa/list` - Generate Q&A from meeting transcript (direct list format)
 - `POST /qa/file` - Generate Q&A from meeting transcript from uploaded JSON file
 
@@ -81,39 +72,8 @@ All response endpoints return a structured format with two sections:
 
 ## Example Request
 
-### Standard Format (with "entries" wrapper)
-
 ```bash
-curl -X POST http://localhost:8000/summarize \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entries": [
-      {
-        "id": 1,
-        "time": {
-          "begin": "00:00:00",
-          "end": "00:00:30"
-        },
-        "name": "John",
-        "text": "Welcome everyone to our weekly meeting."
-      },
-      {
-        "id": 2,
-        "time": {
-          "begin": "00:00:31",
-          "end": "00:01:00"
-        },
-        "name": "Alice",
-        "text": "Today we need to discuss the project timeline."
-      }
-    ]
-  }'
-```
-
-### Direct List Format
-
-```bash
-curl -X POST http://localhost:8000/summarize/list \
+curl -X POST http://localhost:49137/summarize/list \
   -H "Content-Type: application/json" \
   -d '[
     {
@@ -140,7 +100,7 @@ curl -X POST http://localhost:8000/summarize/list \
 ### File Upload
 
 ```bash
-curl -X POST http://localhost:8000/summarize/file \
+curl -X POST http://localhost:49137/summarize/file \
   -F "file=@meeting_data.json"
 ```
 
@@ -149,8 +109,8 @@ curl -X POST http://localhost:8000/summarize/file \
 The service can be customized by editing the prompts directly in the `src/services/ollama_client.py` file:
 
 - User prompts:
-  - `SUMMARY_PROMPT` - The prompt template for summarization
-  - `QA_PROMPT` - The prompt template for Q&A generation
+  - `SUMMARY_USER_PROMPT` - The prompt template for summarization
+  - `QA_USER_PROMPT` - The prompt template for Q&A generation
   
 - System prompts:
   - `SUMMARY_SYSTEM_PROMPT` - The system prompt for summary mode
