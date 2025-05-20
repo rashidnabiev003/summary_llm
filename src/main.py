@@ -6,7 +6,6 @@ import uvicorn
 
 from .schemas import MeetingRequest
 from .services.summarizer import SummarizerService
-from .config import Config
 
 # Configure logging
 logging.basicConfig(
@@ -15,27 +14,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load configuration
-config = Config()
-
 # Initialize FastAPI app
 app = FastAPI(
     title="Meeting Summarizer API",
-    description="API for summarizing meeting transcripts using Ollama and Qwen3 model",
+    description="API for summarizing meeting transcripts using Ollama and Qwen model",
     version="1.0.0",
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.cors_origins,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=config.cors_methods,
-    allow_headers=config.cors_headers,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Initialize services
-summarizer = SummarizerService(config)
+summarizer = SummarizerService()
 
 @app.get("/health")
 async def health_check() -> Dict[str, str]:
@@ -61,7 +57,7 @@ async def summarize_meeting(request: MeetingRequest) -> Dict[str, Any]:
         ])
         
         # Generate summary
-        result = await summarizer.summarize(combined_text, mode="summary")
+        result = await summarizer.generate_summary(combined_text)
         
         logger.info(f"Successfully summarized meeting with {len(request.entries)} entries")
         return result
@@ -94,7 +90,7 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
         ])
         
         # Generate QA
-        result = await summarizer.summarize(combined_text, mode="qa")
+        result = await summarizer.generate_qa(combined_text)
         
         logger.info(f"Successfully generated QA for meeting with {len(request.entries)} entries")
         return result
@@ -111,8 +107,8 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
 if __name__ == "__main__":
     uvicorn.run(
         "src.main:app",
-        host=config.host,
-        port=config.port,
-        reload=config.reload,
-        log_level=config.log_level,
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info",
     ) 

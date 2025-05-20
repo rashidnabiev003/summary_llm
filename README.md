@@ -7,7 +7,7 @@ A microservice for summarizing meeting transcripts using Ollama and the Qwen mod
 - Summarize meeting transcripts
 - Generate Q&A from meeting transcripts
 - Uses Ollama with Qwen model
-- Configurable prompts and server settings
+- Built-in prompt templates and system prompts
 
 ## Prerequisites
 
@@ -19,14 +19,10 @@ A microservice for summarizing meeting transcripts using Ollama and the Qwen mod
 
 ```
 ├── src/
-│   ├── configs/
-│   │   ├── prompts.json    # Prompt templates
-│   │   └── server.json     # Server configuration
 │   ├── services/
 │   │   ├── __init__.py     # Services package
 │   │   ├── ollama_client.py # Ollama API client
 │   │   └── summarizer.py   # Summarizer service
-│   ├── config.py           # Configuration loader
 │   ├── main.py             # FastAPI application
 │   └── schemas.py          # Pydantic models
 └── requirements.txt        # Dependencies
@@ -92,79 +88,14 @@ curl -X POST http://localhost:8000/summarize \
   }'
 ```
 
-## Configuration
+## Customization
 
-The service can be configured by modifying the JSON files in the `src/configs` directory:
+The service can be customized by editing the prompts directly in the `src/services/ollama_client.py` file:
 
-- `prompts.json` - Contains prompt templates for different modes
-- `server.json` - Contains server configuration (host, port, CORS, etc.)
-
-1. Структура проекта
-Проект организован в модульную структуру:
-src/configs/ - JSON-файлы конфигурации
-src/services/ - сервисные компоненты
-src/config.py - загрузчик конфигурации
-src/schemas.py - модели данных (Pydantic)
-src/main.py - основное FastAPI приложение
-2. Конфигурация (configs/ и config.py)
-Файлы конфигурации:
-prompts.json
-Содержит шаблоны запросов к модели:
-summary - шаблон для суммаризации текста встречи
-qa - шаблон для генерации ответов на вопросы о встрече
-server.json
-Содержит настройки сервера:
-Host, port, режим перезагрузки, кол-во воркеров
-Настройки CORS
-Класс Config (config.py):
-При инициализации загружает конфигурацию из JSON-файлов
-Предоставляет удобный интерфейс для доступа к настройкам через свойства (property)
-Обрабатывает ошибки загрузки конфигурации
-3. Модели данных (schemas.py)
-Использует Pydantic для валидации и сериализации данных:
-TimeRange - модель для временного диапазона (начало и конец)
-MeetingEntry - модель для записи части встречи (id, время, имя, текст)
-MeetingRequest - модель для запроса, содержащая список записей встречи
-4. Сервисы (services/)
-OllamaClient (ollama_client.py):
-Взаимодействует с Ollama через командную строку (subprocess)
-Получает шаблоны запросов из конфигурации
-Метод generate() отправляет запрос в Ollama и возвращает ответ
-Метод get_prompt() форматирует шаблон запроса текстом транскрипта
-Обрабатывает различные ошибки (подпроцесса, парсинга JSON и т.д.)
-SummarizerService (summarizer.py):
-Использует OllamaClient для взаимодействия с моделью
-Метод summarize() выполняет суммаризацию или QA в зависимости от режима
-Возвращает результат с метаданными (режим, модель, длина текста)
-Асинхронный (использует async/await), что позволяет обрабатывать несколько запросов одновременно
-5. FastAPI приложение (main.py)
-Настраивает логирование
-Загружает конфигурацию
-Создает экземпляр FastAPI
-Добавляет middleware для CORS
-Инициализирует SummarizerService
-Определяет эндпоинты:
-GET /health - проверка работоспособности
-POST /summarize - суммаризация транскрипта встречи
-POST /qa - генерация Q&A по транскрипту
-6. Поток данных при обработке запроса
-Клиент отправляет POST-запрос на /summarize или /qa с данными встречи.
-FastAPI валидирует запрос через модель MeetingRequest.
-Обработчик объединяет все записи в один текст с указанием времени и говорящего.
-SummarizerService получает сформированный текст и режим.
-OllamaClient форматирует шаблон запроса и отправляет его в Ollama.
-Ollama с моделью Qwen генерирует ответ.
-OllamaClient обрабатывает ответ и возвращает его SummarizerService.
-SummarizerService добавляет метаданные и возвращает результат.
-FastAPI сериализует ответ в JSON и отправляет клиенту.
-7. Обработка ошибок
-Используется система логирования для записи информации, предупреждений и ошибок
-Ошибки обрабатываются на каждом уровне и преобразуются в HTTP-исключения с соответствующими кодами
-Клиент получает информативные сообщения об ошибках
-8. Особенности реализации
-Модульность: каждый компонент отвечает за одну функцию
-Конфигурируемость: все настройки вынесены в JSON-файлы
-Расширяемость: легко добавить новые режимы или модели
-Асинхронность: использование FastAPI и async/await для эффективной обработки запросов
-Безопасность: проверка ввода через Pydantic, обработка ошибок на всех уровнях
-Этот микросервис представляет собой хорошо структурированное решение для суммаризации текстов встреч, которое можно легко развернуть и интегрировать с другими системами.
+- User prompts:
+  - `SUMMARY_PROMPT` - The prompt template for summarization
+  - `QA_PROMPT` - The prompt template for Q&A generation
+  
+- System prompts:
+  - `SUMMARY_SYSTEM_PROMPT` - The system prompt for summary mode
+  - `QA_SYSTEM_PROMPT` - The system prompt for QA mode

@@ -4,32 +4,73 @@ import logging
 from typing import Dict, Any
 from fastapi import HTTPException
 
-from ..config import Config
-
 logger = logging.getLogger(__name__)
 
-system_prompt_qa = """ qa prompt"""
-
-system_prompt_summary = """ summary prompt"""
-
-
 class OllamaClient:
-    def __init__(self, config: Config = None):
+    # Встроенные промпты для пользователя
+    SUMMARY_PROMPT = """Summarize the following meeting transcript in 3-5 paragraphs. Focus on key points, decisions made, and action items. Be concise but comprehensive.
+
+Transcript:
+{transcript}"""
+
+    QA_PROMPT = """Based on the following meeting transcript, answer these questions:
+1. What are the main topics discussed?
+2. What decisions were made?
+3. What are the next steps or action items?
+4. Who has responsibility for different tasks?
+5. What deadlines or timeframes were mentioned?
+
+Transcript:
+{transcript}"""
+
+    # Системные промпты для модели
+    SUMMARY_SYSTEM_PROMPT = "You are an AI assistant that summarizes meeting transcripts accurately and concisely. Your summaries are well-structured and highlight the key points."
+
+    QA_SYSTEM_PROMPT = "You are an AI assistant that analyzes meeting transcripts and extracts important information. Focus on providing clear answers to the questions about topics, decisions, action items, responsibilities, and deadlines."
+
+    def __init__(self):
         """
         Initialize Ollama client.
+        """
+        pass
+  
+    def generate_summary(self, transcript: str) -> str:
+        """
+        Generate summary using Ollama CLI
         
         Args:
-            config: Optional Config instance. If not provided, creates a new one.
+            transcript: The meeting transcript to summarize
+            
+        Returns:
+            str: Generated summary
+            
+        Raises:
+            HTTPException: If there's an error during generation
         """
-        self.config = config or Config()
-        self.prompts = self.config.prompts_config
-  
-    def generate(self, prompt: str) -> str:
+        return self._generate(transcript, is_summary=True)
+        
+    def generate_qa(self, transcript: str) -> str:
+        """
+        Generate QA using Ollama CLI
+        
+        Args:
+            transcript: The meeting transcript to analyze
+            
+        Returns:
+            str: Generated QA
+            
+        Raises:
+            HTTPException: If there's an error during generation
+        """
+        return self._generate(transcript, is_summary=False)
+        
+    def _generate(self, transcript: str, is_summary: bool) -> str:
         """
         Generate text using Ollama CLI
         
         Args:
-            prompt: The prompt to send to the model
+            transcript: The meeting transcript to process
+            is_summary: If True, use summary mode, otherwise use QA mode
             
         Returns:
             str: Generated text response
@@ -37,10 +78,23 @@ class OllamaClient:
         Raises:
             HTTPException: If there's an error during generation
         """
+        # Выбор соответствующего промпта и системного промпта
+        if is_summary:
+            prompt = self.SUMMARY_PROMPT
+            system_prompt = self.SUMMARY_SYSTEM_PROMPT
+        else:
+            prompt = self.QA_PROMPT
+            system_prompt = self.QA_SYSTEM_PROMPT
+            
+        formatted_prompt = prompt.format(transcript=transcript)
+        
+        # Добавляем системный промпт в команду
         cmd = [
-            "ollama", "run", "qwen3:14b",
-            "--prompt", prompt,
-            "--system",
+            "ollama", "run", "qwen",
+            "--prompt", formatted_prompt,
+            "--system", system_prompt,
+            "--max-tokens", "500",
+            "--temperature", "0.2",
             "--json"
         ]
         
@@ -77,34 +131,4 @@ class OllamaClient:
             raise HTTPException(
                 status_code=500,
                 detail=f"Unexpected error: {str(e)}"
-            )
-
-    def get_prompt(self, mode: str, transcript: str) -> str:
-        """
-        Get formatted prompt based on mode
-        
-        Args:
-            mode: The mode to use ('summary' or 'qa')
-            transcript: The meeting transcript to summarize
-            
-        Returns:
-            str: Formatted prompt
-            
-        Raises:
-            HTTPException: If mode is invalid
-        """
-        if mode not in self.prompts:
-            logger.error(f"Invalid mode requested: {mode}")
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid mode: {mode}. Supported modes: {list(self.prompts.keys())}"
-            )
-            
-        try:
-            return self.prompts[mode].format(transcript=transcript)
-        except Exception as e:
-            logger.error(f"Error formatting prompt: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error formatting prompt: {str(e)}"
             )
