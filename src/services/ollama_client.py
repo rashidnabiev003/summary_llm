@@ -1,8 +1,9 @@
 import json
 import subprocess
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from fastapi import HTTPException
+import ollama
 
 logger = logging.getLogger(__name__)
 MODEL = "qwen3:14b"
@@ -36,7 +37,7 @@ Transcript:
         """
         Initialize Ollama client.
         """
-        pass
+        self.model = MODEL
   
     def generate_summary(self, transcript: str) -> str:
         """
@@ -69,47 +70,27 @@ Transcript:
         return self._generate(transcript, is_summary=False)
         
     def _generate(self, transcript: str, is_summary: bool) -> str:
-        # 1. Выбираем системный и пользовательский шаблоны
         system_prompt = self.SUMMARY_SYSTEM_PROMPT if is_summary else self.QA_SYSTEM_PROMPT
-        user_prompt = (self.SUMMARY_USER_PROMPT if is_summary else self.QA_USER_PROMPT).format(
-            transcript=transcript
-        )
+        user_prompt = (
+            self.SUMMARY_USER_PROMPT if is_summary else self.QA_USER_PROMPT
+        ).format(transcript=transcript)
 
-        # 2. Собираем единый текст запроса
-        full_prompt = f"{system_prompt}\n\n{user_prompt}"
-
-        # 3. Формируем команду с позиционным PROMPT и флагом --format json
-        cmd = [
-            "ollama", "run", MODEL,
-            full_prompt,
-            "--format", "json"
+        messages: List[Dict[str, str]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt},
         ]
 
         try:
-            logger.debug(f"Running Ollama CLI: {' '.join(cmd[:3])} <PROMPT> {' '.join(cmd[4:])}")
-            res = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=False
-            )
+            logger.debug(f"Calling ollama.chat(model={self.model}, messages=[...])")
+            response = ollama.chat(model=self.model, messages=messages)
+            # response format: {"message": {"role": ..., "content": ...}}
+            if not response or "message" not in response or "content" not in response["message"]:
+                raise HTTPException(status_code=500, detail="Invalid response structure from Ollama")
 
-            if res.returncode != 0:
-                err = res.stderr.strip() or res.stdout.strip() or "Unknown error"
-                logger.error(f"Ollama CLI failed ({res.returncode}): {err}")
-                raise HTTPException(500, detail=f"Ollama error: {err}")
+            content = response["message"]["content"].strip()
+            logger.debug("Received content from Ollama")
+            return content
 
-            # 4. Парсим JSON-ответ
-            data = json.loads(res.stdout)
-            # Обычно в поле "response"
-            if "response" in data:
-                return data["response"].strip()
-            # или, на всякий случай, в choices
-            if "choices" in data and data["choices"]:
-                return data["choices"][0]["message"]["content"].strip()
-
-            raise HTTPException(500, detail="Unexpected Ollama output format")
-
-        except (subprocess.SubprocessError, json.JSONDecodeError) as e:
+        except Exception as e:
             logger.error(f"Error during Ollama generation: {e}", exc_info=True)
-            raise HTTPException(500, detail=f"Generation error: {e}")
+            raise HTTPException(status_code=500, detail=f"Generation error: {str(e)}")

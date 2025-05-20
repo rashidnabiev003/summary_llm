@@ -3,8 +3,8 @@ from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from schemas import MeetingRequest
-from services.summarizer import SummarizerService
+from .schemas import MeetingRequest
+from .services.summarizer import SummarizerService
 
 # Configure logging
 logging.basicConfig(
@@ -38,7 +38,7 @@ async def health_check() -> Dict[str, str]:
     return {"status": "healthy"}
 
 @app.post("/summarize")
-async def summarize_meeting(request: MeetingRequest) -> Dict[str, Any]:
+async def summarize_meeting(request: MeetingRequest) -> Dict[str, str]:
     """
     Summarize meeting transcript
     
@@ -46,7 +46,7 @@ async def summarize_meeting(request: MeetingRequest) -> Dict[str, Any]:
         request: Meeting request with entries
     
     Returns:
-        Dict with summary and metadata
+        Dict with result field containing the summary
     """
     try:
         # Combine all meeting entries into a single transcript
@@ -56,10 +56,10 @@ async def summarize_meeting(request: MeetingRequest) -> Dict[str, Any]:
         ])
         
         # Generate summary
-        result = await summarizer.generate_summary(combined_text)
+        result_text = await summarizer.generate_summary(combined_text)
         
         logger.info(f"Successfully summarized meeting with {len(request.entries)} entries")
-        return result
+        return {"result": result_text}
         
     except Exception as e:
         logger.error(f"Error summarizing meeting: {str(e)}")
@@ -71,7 +71,7 @@ async def summarize_meeting(request: MeetingRequest) -> Dict[str, Any]:
         )
 
 @app.post("/qa")
-async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
+async def meeting_qa(request: MeetingRequest) -> Dict[str, str]:
     """
     Generate QA for meeting transcript
     
@@ -79,7 +79,7 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
         request: Meeting request with entries
     
     Returns:
-        Dict with QA and metadata
+        Dict with result field containing the QA
     """
     try:
         # Combine all meeting entries into a single transcript
@@ -89,10 +89,10 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
         ])
         
         # Generate QA
-        result = await summarizer.generate_qa(combined_text)
+        result_text = await summarizer.generate_qa(combined_text)
         
         logger.info(f"Successfully generated QA for meeting with {len(request.entries)} entries")
-        return result
+        return {"result": result_text}
         
     except Exception as e:
         logger.error(f"Error generating QA for meeting: {str(e)}")
@@ -106,9 +106,8 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        app,
+        "src.main:app",
         host="0.0.0.0",
         port=49137,
-        #reload=True,
         log_level="info",
     ) 

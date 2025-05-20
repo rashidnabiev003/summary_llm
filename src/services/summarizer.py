@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from fastapi import HTTPException
 
-from ollama_client import OllamaClient
+from .ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class SummarizerService:
         """
         self.ollama = OllamaClient()
         
-    async def generate_summary(self, transcript: str) -> Dict[str, Any]:
+    async def generate_summary(self, transcript: str) -> str:
         """
         Summarize meeting transcript.
         
@@ -21,7 +21,7 @@ class SummarizerService:
             transcript: The meeting transcript to summarize
             
         Returns:
-            Dict containing the summary and metadata
+            str: Generated summary text
             
         Raises:
             HTTPException: If there's an error during summarization
@@ -30,18 +30,8 @@ class SummarizerService:
             # Generate summary
             result = self.ollama.generate_summary(transcript)
             
-            # Prepare response
-            response = {
-                "result": result,
-                "metadata": {
-                    "mode": "summary",
-                    "model": "qwen",
-                    "transcript_length": len(transcript)
-                }
-            }
-            
             logger.info(f"Successfully generated summary for transcript of length {len(transcript)}")
-            return response
+            return result
             
         except HTTPException:
             raise
@@ -52,7 +42,7 @@ class SummarizerService:
                 detail=f"Error during summarization: {str(e)}"
             )
             
-    async def generate_qa(self, transcript: str) -> Dict[str, Any]:
+    async def generate_qa(self, transcript: str) -> str:
         """
         Generate QA for meeting transcript.
         
@@ -60,7 +50,7 @@ class SummarizerService:
             transcript: The meeting transcript to analyze
             
         Returns:
-            Dict containing the QA and metadata
+            str: Generated QA text
             
         Raises:
             HTTPException: If there's an error during QA generation
@@ -69,18 +59,8 @@ class SummarizerService:
             # Generate QA
             result = self.ollama.generate_qa(transcript)
             
-            # Prepare response
-            response = {
-                "result": result,
-                "metadata": {
-                    "mode": "qa",
-                    "model": "qwen",
-                    "transcript_length": len(transcript)
-                }
-            }
-            
             logger.info(f"Successfully generated QA for transcript of length {len(transcript)}")
-            return response
+            return result
             
         except HTTPException:
             raise
