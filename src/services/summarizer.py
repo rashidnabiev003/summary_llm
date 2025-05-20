@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from fastapi import HTTPException
 
-from .ollama_client import OllamaClient
+from ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
 

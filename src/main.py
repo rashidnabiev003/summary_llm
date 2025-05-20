@@ -2,10 +2,9 @@ import logging
 from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 
-from .schemas import MeetingRequest
-from .services.summarizer import SummarizerService
+from schemas import MeetingRequest
+from services.summarizer import SummarizerService
 
 # Configure logging
 logging.basicConfig(
@@ -105,10 +104,11 @@ async def meeting_qa(request: MeetingRequest) -> Dict[str, Any]:
         )
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(
-        "src.main:app",
+        app,
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=49137,
+        #reload=True,
         log_level="info",
     ) 
