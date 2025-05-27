@@ -1,10 +1,14 @@
 import logging
 import json
+import requests
+import datetime
+import ollama
 from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from src.schemas import MeetingRequest, MeetingEntry, MeetingEntryList
+from src.schemas import MeetingRequest, MeetingEntry, MeetingEntryList, AppConfig, Info
 from src.services.summarizer import SummarizerService
 
 # Configure logging
@@ -18,7 +22,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Meeting Summarizer API",
     description="API for summarizing meeting transcripts using Ollama and Qwen model",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 # Add CORS middleware
@@ -29,6 +33,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def load_config(path: str = "config.json") -> AppConfig:
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return AppConfig(**data)
+
+cfg = load_config()
+
+def get_utc_timestamp():
+    return datetime.datetime.utcnow().isoformat() + "Z"
 
 # Initialize services
 summarizer = SummarizerService()
@@ -41,11 +55,93 @@ async def process_entries(entries: List[MeetingEntry]) -> str:
     ])
     return combined_text
 
-@app.get("/health")
+@app.get("/ping")
 async def health_check() -> Dict[str, str]:
     """Health check endpoint"""
-    return {"status": "healthy"}
+    try:
+        res = requests.get(f"{cfg.ollama.ollama_url}/api/tags", timeout=5)
+        res.raise_for_status()
+        
+        models = ollama.list()
+        names = [m["name"] for m in models.get("models", [])]
+        
+        if cfg.ollama.MODEL_NAME not in names:
+            return {
+                "status": "unavailable",
+                "error": f"{cfg.ollama.MODEL_NAME} is not found",
+                "timestamp": get_utc_timestamp()
+            }
 
+        return {
+            "status": "pong",
+            "timestamp": get_utc_timestamp()
+        }
+
+
+    except requests.exceptions.ConnectionError:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unavailable",
+                "error": "server not running",
+                "timestamp": get_utc_timestamp()
+            }
+        )
+    except requests.exceptions.Timeout:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unavailable",
+                "error": "timeout",
+                "timestamp": get_utc_timestamp()
+            }
+        )
+    except requests.exceptions.RequestException as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unavailable",
+                "error": str(e),
+                "timestamp": get_utc_timestamp()
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error when checking model status: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "error": str(e),
+                "timestamp": get_utc_timestamp()
+            }
+        )
+        
+@app.get("/info", response_model=Info)
+async def info() -> Info:
+    model_status = "Enabled"
+    server_status = "Connected"
+    try:
+        res = requests.get(f"{cfg.ollama.ollama_url}/api/tags", timeout=5)
+        res.raise_for_status()
+        
+        models = ollama.list()
+        names = [m["name"] for m in models.get("models", [])]
+        
+        if cfg.ollama.MODEL_NAME not in names:
+            model_status = "Model not found"
+
+    except requests.exceptions.ConnectionError:
+        server_status = "Connection error"
+
+    except requests.exceptions.Timeout:
+        server_status = "Connection error"
+    
+    return Info(
+        name="Meeting Summarizer API",
+        version="1.1.0",
+        model_status=model_status,
+        server=server_status
+    )
 
 @app.post("/summarize/list")
 async def summarize_meeting_list(entries: MeetingEntryList) -> Dict[str, Any]:
@@ -74,7 +170,12 @@ async def summarize_meeting_list(entries: MeetingEntryList) -> Dict[str, Any]:
             raise
         raise HTTPException(
             status_code=500,
-            detail=f"Error summarizing meeting: {str(e)}"
+            detail=f"Error summarizing meeting: {str(e)}",
+            content={
+                "error": "generation errror",
+                "message": f"Error summarizing meeting:  {str(e)}",
+                "timestamp": get_utc_timestamp()
+            }
         )
 
 @app.post("/summarize/file")
@@ -112,8 +213,13 @@ async def summarize_meeting_file(file: UploadFile = File(...)) -> Dict[str, Any]
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
-            status_code=500,
-            detail=f"Error summarizing meeting from file: {str(e)}"
+            status_code=501,
+            detail=f"Error summarizing meeting from file: {str(e)}",
+            content={
+                "error": "generation errror",
+                "message": f"Error summarizing meeting from file:  {str(e)}",
+                "timestamp": get_utc_timestamp()
+            }
         )
 
 @app.post("/qa/list")
@@ -143,7 +249,12 @@ async def meeting_qa_list(entries: MeetingEntryList) -> Dict[str, Any]:
             raise
         raise HTTPException(
             status_code=500,
-            detail=f"Error generating QA for meeting: {str(e)}"
+            detail=f"Error generating QA for meeting: {str(e)}",
+            content={
+                "error": "generation errror",
+                "message": f"Error generating QA: {str(e)}",
+                "timestamp": get_utc_timestamp()
+            }
         )
 
 @app.post("/qa/file")
@@ -181,6 +292,11 @@ async def meeting_qa_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         if isinstance(e, HTTPException):
             raise
         raise HTTPException(
-            status_code=500,
-            detail=f"Error generating QA from file: {str(e)}"
+            status_code=501,
+            detail=f"Error generating QA from file: {str(e)}",
+            content={
+                "error": "generation errror",
+                "message": f"Error generating QA from file: {str(e)}",
+                "timestamp": get_utc_timestamp()
+            }
         ) 

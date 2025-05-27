@@ -29,9 +29,9 @@ A microservice for summarizing meeting transcripts using Ollama and the Qwen mod
 │   │   └── summarizer.py   # Summarizer service
 │   ├── main.py             # FastAPI application
 │   ├── schemas.py          # Pydantic models
-└── run.py                  # Script for launching the application
-└── requirements.txt        # Dependencies
-└── setup.py                # Script for correctly import libraries
+├── run.py                  # Script for launching the application
+├── requirements.txt        # Dependencies
+├── setup.py                # Script for correctly import libraries
 └── .gitingnore
 ```
 

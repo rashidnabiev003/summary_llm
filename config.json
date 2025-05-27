@@ -1,0 +1,11 @@
+{
+    "ollama" : {
+    "MODEL_NAME":"qwen3:14b",
+    "ollama_version":"0.7.0",
+    "ollama_url":"http://localhost:11434"
+    },
+    "server":{
+    "port":"49135",
+    "host":"0.0.0.0"
+    }
+}

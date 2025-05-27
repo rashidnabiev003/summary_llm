@@ -34,3 +34,23 @@ class MeetingRequest(BaseModel):
         
 # Для прямого приема списка записей
 MeetingEntryList = List[MeetingEntry] 
+
+class OllamaConfig(BaseModel):
+    MODEL_NAME: str
+    ollama_version: str
+    ollama_url: str
+
+class ServerConfig(BaseModel):
+    port: str
+    host: str
+
+class AppConfig(BaseModel):
+    """Модель для конфигураций системы"""
+    ollama: OllamaConfig
+    server: ServerConfig
+
+class Info(BaseModel):
+    name: str
+    version: str
+    model_status: str
+    server: str

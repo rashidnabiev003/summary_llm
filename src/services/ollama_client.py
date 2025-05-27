@@ -3,10 +3,19 @@ import subprocess
 import logging
 from typing import Dict, Any, List
 from fastapi import HTTPException
+from src.schemas import AppConfig
 import ollama
 
+
+def load_config(path: str = "config.json") -> AppConfig:
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return AppConfig(**data)
+
+cfg = load_config()
+
 logger = logging.getLogger(__name__)
-MODEL = "qwen3:14b"
+MODEL = cfg.ollama.MODEL_NAME
 
 class OllamaClient:
     SUMMARY_SYSTEM_PROMPT = (
@@ -38,7 +47,13 @@ class OllamaClient:
 4. Кто отвечает за выполнение различных задач? 
 5. Какие сроки или временные рамки были упомянуты? 
 
-Ваш ответ должен соответствовать следующему формату: 
+Формат ответов для каждой темы должен быть такой:
+Тема: <название темы>
+Исполнитель: <Имя исполнителя>
+Сроки: <Сроки выполнения>
+Примечания: <примечания> (добавить опционально)
+
+Ваш вывода должен соответствовать следующему формату: 
 <think>
 Здесь вы анализируете содержание, определяете необходимую информацию для ответа на каждый вопрос.
 </think>
